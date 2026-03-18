@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student - Literacy Assessment</title>
+<style>
+:root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
+body { font-family: 'Segoe UI', Roboto, Helvetica, Arial; text-align: center; padding: 20px; background-color: var(--bg); color: #1e293b; }
+#quiz-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); display: inline-block; max-width: 800px; width: 100%; margin-top: 20px; }
+.input-group { margin-bottom: 20px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; }
+label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; outline: none; }
+.btn { padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; border: none; transition: all 0.2s; }
+.btn-primary { background-color: var(--primary); color: white; width: 100%; max-width: 400px; }
+#btnSpeak { background-color: var(--success); color: white; font-size: 20px; padding: 20px 40px; border-radius: 50px; margin: 20px 0; }
+#btnSpeak:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+#question { font-size: 26px; font-weight: 700; margin: 30px 0; color: #0f172a; }
+#transcript { min-height: 24px; color: #64748b; font-style: italic; margin-bottom: 10px; }
+#result-feedback { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
+.hidden { display: none; }
+.book-item { display: flex; align-items: center; padding: 12px; border: 1px solid #e2e8f0; margin-bottom: 10px; border-radius: 8px; background: white; }
+.book-info { flex: 1; text-align: left; }
+.book-title { color: var(--primary); font-weight: 600; font-size: 16px; }
+.book-link { font-size: 12px; color: #64748b; text-decoration: none; }
+#score-display { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div id="quiz-card">
+  <div id="setup-section">
+    <h1>Student Portal</h1>
+    <p>Sign in to access your materials.</p>
+    <div class="input-group">
+      <label>Student ID</label>
+      <input type="text" id="studentID" placeholder="Enter Student ID (e.g., 001)">
+      <div id="studentIdError" class="hidden" style="color: var(--danger); font-weight: 600; margin-top: 6px;">ID not enrolled. Ask your teacher.</div>
+    </div>
+    <div class="input-group">
+      <label>Grade & Section</label>
+      <input type="text" id="gradeSection" placeholder="e.g., 10-Diamond">
+    </div>
+    <button class="btn btn-primary" id="loginBtn">Login</button>
+  </div>
+
+  <div id="dashboard-section" class="hidden">
+    <h1>Welcome!</h1>
+    <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+      <button class="btn" id="navBooks" style="background-color: #8b5cf6; color: white; padding: 20px 40px;">📚 Read Books</button>
+      <button class="btn" id="navQuiz" style="background-color: var(--success); color: white; padding: 20px 40px;">🎤 Take Quiz</button>
+    </div>
+    <br>
+    <button class="btn" onclick="location.reload()" style="background:#64748b; color:white;">Logout</button>
+  </div>
+
+  <div id="quiz-menu-section" class="hidden">
+    <h1>Available Quizzes</h1>
+    <div id="quizListContainer" style="display: flex; flex-direction: column; align-items: center; gap: 15px;"></div>
+    <button class="btn btn-primary" id="backFromQuizMenu" style="margin-top:20px; background:#64748b;">Back</button>
+  </div>
+
+  <div id="quiz-section" class="hidden">
+    <div id="question"></div>
+    <button id="btnSpeak" class="btn">🎤 Tap to Answer</button>
+    <div id="transcript">Waiting for your voice...</div>
+    <div id="result-feedback"></div>
+    <div id="score-display">Score: 0</div>
+  </div>
+
+  <div id="books-section" class="hidden">
+    <h2>📚 Available Books</h2>
+    <div id="booksList"></div>
+    <button class="btn btn-primary" id="backFromBooks" style="margin-top:20px; background:#64748b;">Back</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// FIREBASE CONFIG - PASTE YOUR KEYS HERE
+const firebaseConfig = {
+  apiKey: "YOUR_ACTUAL_API_KEY",
+  authDomain: "teacherd-c39ea.firebaseapp.com",
+  projectId: "teacherd-c39ea",
+  storageBucket: "teacherd-c39ea.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let currentBooks = [];
+let currentQuizzes = [];
+let activeQuiz = null;
+let currentIndex = 0;
+let score = 0;
+
+// --- NAVIGATION LOGIC ---
+function showSection(id) {
+    ['setup-section', 'dashboard-section', 'quiz-menu-section', 'quiz-section', 'books-section'].forEach(s => {
+        document.getElementById(s).classList.add('hidden');
+    });
+    document.getElementById(id).classList.remove('hidden');
+}
+
+document.getElementById('navBooks').onclick = () => { renderBooks(); showSection('books-section'); };
+document.getElementById('navQuiz').onclick = () => { renderQuizMenu(); showSection('quiz-menu-section'); };
+document.getElementById('backFromBooks').onclick = () => showSection('dashboard-section');
+document.getElementById('backFromQuizMenu').onclick = () => showSection('dashboard-section');
+
+// --- LOGIN ---
+document.getElementById('loginBtn').onclick = async () => {
+    const id = document.getElementById('studentID').value.trim();
+    const gs = document.getElementById('gradeSection').value.trim();
+
+    if(!id || !gs) return alert("Please fill in your ID and Grade/Section");
+
+    const q = query(collection(db, "enrolled"), where("studentId", "==", id));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+        document.getElementById('studentIdError').classList.remove('hidden');
+    } else {
+        showSection('dashboard-section');
+    }
+};
+
+// --- REAL-TIME DATA ---
+onSnapshot(collection(db, "books"), (snap) => {
+    currentBooks = snap.docs.map(doc => doc.data());
+});
+
+onSnapshot(collection(db, "quizzes"), (snap) => {
+    currentQuizzes = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+});
+
+function renderBooks() {
+    const container = document.getElementById('booksList');
+    container.innerHTML = currentBooks.map(b => `
+        <div class="book-item">
+            <div class="book-info">
+                <div class="book-title">${b.title}</div>
+                <a href="${b.link}" target="_blank" class="book-link">Open PDF Document →</a>
+            </div>
+        </div>`).join('');
+}
+
+function renderQuizMenu() {
+    const container = document.getElementById('quizListContainer');
+    container.innerHTML = "";
+    currentQuizzes.forEach(q => {
+        const btn = document.createElement('button');
+        btn.className = "btn btn-primary";
+        btn.style.backgroundColor = q.locked ? "#cbd5e1" : "#2563eb";
+        btn.innerHTML = q.name + (q.locked ? " 🔒" : "");
+        btn.onclick = () => {
+            if(q.locked) return alert("Teacher has locked this quiz.");
+            startActualQuiz(q);
+        };
+        container.appendChild(btn);
+    });
+}
+
+// --- SPEECH & QUIZ ENGINE ---
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = 'en-US';
+recognition.interimResults = false;
+
+function startActualQuiz(quiz) {
+    activeQuiz = quiz;
+    currentIndex = 0;
+    score = 0;
+    showSection('quiz-section');
+    nextQuestion();
+}
+
+function nextQuestion() {
+    if(currentIndex >= activeQuiz.q.length) {
+        saveResults();
+        return;
+    }
+    document.getElementById('question').textContent = activeQuiz.q[currentIndex];
+    document.getElementById('score-display').textContent = `Score: ${score} / ${activeQuiz.q.length}`;
+    document.getElementById('result-feedback').textContent = "";
+    document.getElementById('transcript').textContent = "Ready for answer...";
+    document.getElementById('btnSpeak').disabled = false;
+    document.getElementById('btnSpeak').textContent = "🎤 Tap to Answer";
+}
+
+document.getElementById('btnSpeak').onclick = () => {
+    recognition.start();
+    document.getElementById('btnSpeak').textContent = "Listening...";
+    document.getElementById('btnSpeak').disabled = true;
+};
+
+recognition.onresult = (event) => {
+    const speech = event.results[0][0].transcript.toLowerCase();
+    const keyword = activeQuiz.a[currentIndex].toLowerCase();
+    document.getElementById('transcript').textContent = `AI Heard: "${speech}"`;
+
+    if(speech.includes(keyword)) {
+        document.getElementById('result-feedback').innerHTML = "<span style='color:green'>Correct! ✅</span>";
+        score++;
+    } else {
+        document.getElementById('result-feedback').innerHTML = `<span style='color:red'>Incorrect ❌ (Keyword: ${keyword})</span>`;
+    }
+
+    setTimeout(() => {
+        currentIndex++;
+        nextQuestion();
+    }, 2500);
+};
+
+async function saveResults() {
+    const id = document.getElementById('studentID').value;
+    const gs = document.getElementById('gradeSection').value;
+    
+    await addDoc(collection(db, "results"), {
+        studentId: id,
+        gradeSection: gs,
+        quizName: activeQuiz.name,
+        score: `${score} / ${activeQuiz.q.length}`,
+        timestamp: new Date()
+    });
+
+    alert("Well done! Your results were sent to the Teacher.");
+    location.reload();
+}
+</script>
+</body>
+</html>

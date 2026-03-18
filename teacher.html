@@ -24,7 +24,7 @@ body {
   border-radius: 16px;  
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);  
   display: inline-block;  
-  max-width: 1000px;  
+  max-width: 1100px;  
   width: 100%;  
 }  
 .login-container { max-width: 400px; margin: 0 auto; text-align: left; }  
@@ -36,29 +36,31 @@ textarea { resize: vertical; }
 .btn-primary { background: var(--primary); color: white; }  
 .btn-primary:hover { background: #1d4ed8; }  
 .hidden { display: none; }  
-table { width:100%; border-collapse: collapse; margin-top:20px; }  
+table { width:100%; border-collapse: collapse; margin-top:20px; table-layout: auto; }  
 th, td { border:1px solid #e2e8f0; padding:12px; text-align:left; vertical-align:top; }  
 th { background: #f1f5f9; }  
-.error { color: var(--danger); font-weight:600; margin-top:10px; }  
 .edit-btn { background:#3b82f6;color:white;padding:6px 12px;font-size:12px;border-radius:6px;cursor:pointer;margin-left:5px; border:none; }  
 .delete-btn { background:#ef4444;color:white;padding:6px 12px;font-size:12px;border-radius:6px;cursor:pointer;margin-left:5px; border:none; }  
 .question-block { margin-bottom:10px; display:flex; gap:10px; align-items:center; }  
 .question-block input { flex:1; }  
 
-#tableControls button {
-  background: var(--success);
-  color: white;
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: 6px;
-  margin-right: 5px;
-  border: none;
-  cursor: pointer;
-}
-#tableControls { margin-top:15px; text-align: left; }
-</style>
+.book-title-link { color: #2563eb; text-decoration: none; font-weight: bold; cursor: pointer; }  
+.book-title-link:hover { text-decoration: underline; }  
+
+#tableControls { margin-top:15px; text-align: left; }  
+#tableControls button { background: var(--success); color: white; padding: 6px 12px; font-size: 13px; border-radius: 6px; margin-right: 5px; border: none; cursor: pointer; }  
+
+@media print {  
+    .no-print, #tableControls, .delete-btn, .edit-btn, button, #teacher-dashboard > div:first-of-type {  
+        display: none !important;  
+    }  
+    #quiz-card { box-shadow: none; padding: 0; width: 100%; }  
+    body { background: white; padding: 0; }  
+}  
+</style>  
 </head>  
 <body>  
+
 <div id="quiz-card">  
   <div id="teacher-login">  
     <h2>Teacher Login</h2>  
@@ -67,14 +69,13 @@ th { background: #f1f5f9; }
         <label>Teacher ID</label>  
         <input type="text" id="teacherID" placeholder="Enter ID (01, 02, or 03)" />  
       </div>  
-      <div id="loginError" class="error hidden"></div>  
       <button id="loginBtn" class="btn btn-primary">Login</button>  
     </div>  
   </div>  
 
   <div id="teacher-dashboard" class="hidden">  
-    <h2>Teacher Dashboard</h2>      
-    <div style="margin-bottom:20px;">  
+    <h2 class="no-print">Teacher Dashboard</h2>      
+    <div style="margin-bottom:20px;" class="no-print">  
       <button id="scoreboardBtn" class="btn btn-primary">Scoreboard</button>  
       <button id="addBooksBtn" class="btn btn-primary">Books</button>  
       <button id="quizzesBtn" class="btn btn-primary">Quizzes</button>  
@@ -83,8 +84,8 @@ th { background: #f1f5f9; }
     </div>  
 
     <div id="scoreboard-controls" class="hidden">  
-      <h3>Live Student Results</h3>
-      <div id="tableControls">  
+      <h3>STUDENT RESULT</h3>  
+      <div id="tableControls" class="no-print">  
           <button onclick="window.print()">Print Report</button>  
           <button id="refreshDataBtn">Refresh List</button>  
       </div>  
@@ -95,7 +96,7 @@ th { background: #f1f5f9; }
                   <th>Grade & Section</th>  
                   <th>Quiz Title</th>  
                   <th>Final Score</th>  
-                  <th>Action</th>  
+                  <th class="no-print">Action</th>  
               </tr>  
           </thead>  
           <tbody id="scoreboard-list"></tbody>  
@@ -117,136 +118,177 @@ th { background: #f1f5f9; }
       <button id="addQuestionBtn" class="btn btn-primary">+ Add Question</button><br><br>  
       <button id="saveQuizBtn" class="btn btn-primary">Save Quiz</button>  
       <table>  
-        <thead><tr><th>Title</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead>  
+        <thead><tr><th>Title</th><th>Questions</th><th>Keywords</th><th>Status</th><th>Actions</th></tr></thead>  
         <tbody id="quizzes-list"></tbody>  
       </table>  
     </div>  
 
-    <div id="enroll-section" class="hidden">
-      <h3>Enroll Students</h3>
-      <div style="text-align: left; margin-bottom: 20px; max-width: 600px; margin: 0 auto;">
-        <label>Input Students (Format: Name|ID)</label>
-        <textarea id="enrollInput" rows="4" placeholder="Juan Dela Cruz|001&#10;Maria Santos|002"></textarea>
-        <br><br>
-        <button id="saveEnrollBtn" class="btn btn-primary" style="width:100%">Save Students</button>
-      </div>
-      <table>
-        <thead><tr><th>Student Name</th><th>Student ID</th><th>Action</th></tr></thead>
-        <tbody id="enroll-list"></tbody>
-      </table>
-    </div>
+    <div id="enroll-section" class="hidden">  
+      <h3>Enroll Students</h3>  
+      <div style="text-align: left; margin-bottom: 20px; max-width: 600px; margin: 0 auto;">  
+        <label>Input Students (Format: Name|ID)</label>  
+        <textarea id="enrollInput" rows="4" placeholder="Juan Dela Cruz|001"></textarea>  
+        <br><br>  
+        <button id="saveEnrollBtn" class="btn btn-primary" style="width:100%">Save Students</button>  
+      </div>  
+      <table>  
+        <thead><tr><th>Student Name</th><th>Student ID</th><th>Action</th></tr></thead>  
+        <tbody id="enroll-list"></tbody>  
+      </table>  
+    </div>  
   </div>  
 </div>  
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-    getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+<script type="module">  
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";  
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";  
 
-// FIREBASE CONFIG - FILL IN YOUR KEYS FROM THE CONSOLE
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "teacherd-c39ea.firebaseapp.com",
-  projectId: "teacherd-c39ea",
-  storageBucket: "teacherd-c39ea.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
+// IMPORTANT: Replace these with your actual Firebase project keys!
+const firebaseConfig = {  
+  apiKey: "YOUR_API_KEY",  
+  authDomain: "teacherd-c39ea.firebaseapp.com",  
+  projectId: "teacherd-c39ea",  
+  storageBucket: "teacherd-c39ea.appspot.com",  
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",  
+  appId: "YOUR_APP_ID"  
+};  
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);  
+const db = getFirestore(app);  
 
-// LOGIN LOGIC
-document.getElementById('loginBtn').onclick = () => {
-    const id = document.getElementById('teacherID').value.trim();
-    if (["01","02","03"].includes(id)) {
-        document.getElementById('teacher-login').classList.add('hidden');
-        document.getElementById('teacher-dashboard').classList.remove('hidden');
-    } else { alert("Invalid ID"); }
-};
-document.getElementById('logoutBtn').onclick = () => location.reload();
+// LOGIN 
+document.getElementById('loginBtn').onclick = () => {  
+    const id = document.getElementById('teacherID').value.trim();  
+    if (["01","02","03"].includes(id)) {  
+        document.getElementById('teacher-login').classList.add('hidden');  
+        document.getElementById('teacher-dashboard').classList.remove('hidden');  
+    } else { alert("Invalid ID"); }  
+};  
+document.getElementById('logoutBtn').onclick = () => location.reload();  
 
-// NAVIGATION
+// NAV 
 function show(id){  
-  ['books-section', 'quizzes-section', 'scoreboard-controls', 'enroll-section'].forEach(s => document.getElementById(s).classList.add('hidden'));
+  ['books-section', 'quizzes-section', 'scoreboard-controls', 'enroll-section'].forEach(s => document.getElementById(s).classList.add('hidden'));  
   document.getElementById(id).classList.remove('hidden');  
 }  
-document.getElementById('addBooksBtn').onclick = () => show('books-section');
-document.getElementById('quizzesBtn').onclick = () => show('quizzes-section');
-document.getElementById('enrollBtn').onclick = () => show('enroll-section');
-document.getElementById('scoreboardBtn').onclick = () => show('scoreboard-controls');
+document.getElementById('scoreboardBtn').onclick = () => show('scoreboard-controls');  
+document.getElementById('addBooksBtn').onclick = () => show('books-section');  
+document.getElementById('quizzesBtn').onclick = () => show('quizzes-section');  
+document.getElementById('enrollBtn').onclick = () => show('enroll-section');  
 
-// --- 1. ENROLLMENT ---
-document.getElementById('saveEnrollBtn').onclick = async () => {
-    const lines = document.getElementById('enrollInput').value.trim().split('\n');
-    for (let line of lines) {
-        const [name, id] = line.split('|');
-        if (name && id) await addDoc(collection(db, "enrolled"), { name: name.trim(), studentId: id.trim() });
-    }
-    document.getElementById('enrollInput').value = "";
-};
+// ENROLL LOGIC (SYNCED WITH FIREBASE)
+document.getElementById('saveEnrollBtn').onclick = async () => {  
+    const input = document.getElementById('enrollInput').value.trim();  
+    const editId = document.getElementById('saveEnrollBtn').getAttribute('data-edit-id');  
 
-onSnapshot(collection(db, "enrolled"), (snap) => {
-    const list = document.getElementById('enroll-list');
-    list.innerHTML = snap.docs.map(d => `<tr><td>${d.data().name}</td><td>${d.data().studentId}</td>
-    <td><button class="delete-btn" onclick="deleteEnroll('${d.id}')">Delete</button></td></tr>`).join('');
-});
+    if (editId) {  
+        const [name, id] = input.split('|');  
+        await updateDoc(doc(db, "enrolled", editId), { name: name.trim(), studentId: id.trim() });  
+        document.getElementById('saveEnrollBtn').removeAttribute('data-edit-id');  
+        document.getElementById('saveEnrollBtn').innerText = "Save Students";  
+    } else {  
+        const lines = input.split('\n');  
+        for (let line of lines) {  
+            const [name, id] = line.split('|');  
+            if (name && id) await addDoc(collection(db, "enrolled"), { name: name.trim(), studentId: id.trim() });  
+        }  
+    }  
+    document.getElementById('enrollInput').value = "";  
+};  
 
-// --- 2. BOOKS ---
-document.getElementById('saveBookBtn').onclick = async () => {
-    const title = document.getElementById('bookTitle').value;
-    const link = document.getElementById('bookLink').value;
-    if(title && link) await addDoc(collection(db, "books"), { title, link });
-    document.getElementById('bookTitle').value = ""; document.getElementById('bookLink').value = "";
-};
+onSnapshot(collection(db, "enrolled"), (snap) => {  
+    document.getElementById('enroll-list').innerHTML = snap.docs.map(d => `  
+        <tr>  
+            <td>${d.data().name}</td>  
+            <td>${d.data().studentId}</td>  
+            <td>  
+                <button class="edit-btn" onclick="prepareEditEnroll('${d.id}', '${d.data().name}', '${d.data().studentId}')">Edit</button>  
+                <button class="delete-btn" onclick="deleteEnroll('${d.id}')">Delete</button>  
+            </td>  
+        </tr>`).join('');  
+});  
 
-onSnapshot(collection(db, "books"), (snap) => {
-    const list = document.getElementById('books-list');
-    list.innerHTML = "<table>" + snap.docs.map(d => `<tr><td>${d.data().title}</td><td><button class="delete-btn" onclick="deleteBook('${d.id}')">Delete</button></td></tr>`).join('') + "</table>";
-});
+window.prepareEditEnroll = (id, name, sid) => {  
+    document.getElementById('enrollInput').value = `${name}|${sid}`;  
+    document.getElementById('saveEnrollBtn').innerText = "Update Student";  
+    document.getElementById('saveEnrollBtn').setAttribute('data-edit-id', id);  
+};  
 
-// --- 3. QUIZZES ---
-window.addQuestion = (q="", a="") => {  
-  let div=document.createElement('div'); div.className="question-block";  
-  div.innerHTML=`<input class="q-val" value="${q}" placeholder="Question"><input class="a-val" value="${a}" placeholder="Keyword"><button onclick="this.parentElement.remove()">X</button>`;  
-  document.getElementById('questions-container').appendChild(div);  
+// BOOKS LOGIC
+document.getElementById('saveBookBtn').onclick = async () => {  
+    const title = document.getElementById('bookTitle').value.trim();  
+    const link = document.getElementById('bookLink').value.trim();  
+    const editId = document.getElementById('saveBookBtn').getAttribute('data-edit-id');  
+    if (title && link) {  
+        if (editId) {  
+            await updateDoc(doc(db, "books", editId), { title, link });  
+            document.getElementById('saveBookBtn').removeAttribute('data-edit-id');  
+            document.getElementById('saveBookBtn').innerText = "Save Book";  
+        } else { await addDoc(collection(db, "books"), { title, link }); }  
+        document.getElementById('bookTitle').value = ""; document.getElementById('bookLink').value = "";  
+    }  
+};  
+
+onSnapshot(collection(db, "books"), (snap) => {  
+    document.getElementById('books-list').innerHTML = `<table><thead><tr><th>Title</th><th>Action</th></tr></thead><tbody>` +   
+    snap.docs.map(d => `<tr><td><a href="${d.data().link}" target="_blank" class="book-title-link">${d.data().title}</a></td><td><button class="edit-btn" onclick="prepareEditBook('${d.id}', '${d.data().title}', '${d.data().link}')">Edit</button><button class="delete-btn" onclick="deleteBook('${d.id}')">Delete</button></td></tr>`).join('') + `</tbody></table>`;  
+});  
+
+window.prepareEditBook = (id, t, l) => {  
+    document.getElementById('bookTitle').value = t; document.getElementById('bookLink').value = l;  
+    document.getElementById('saveBookBtn').setAttribute('data-edit-id', id);  
+    document.getElementById('saveBookBtn').innerText = "Update Book";  
+};  
+
+// QUIZ LOGIC
+window.addQuestion = (q = "", a = "") => {  
+    let div = document.createElement('div');  
+    div.className = "question-block";  
+    div.innerHTML = `<input class="q-val" value="${q}" placeholder="Question"><input class="a-val" value="${a}" placeholder="Keyword"><button onclick="this.parentElement.remove()" style="background:red; color:white; border-radius:50%; border:none; width:25px; cursor:pointer;">X</button>`;  
+    document.getElementById('questions-container').appendChild(div);  
 }  
-document.getElementById('addQuestionBtn').onclick = () => window.addQuestion();
+document.getElementById('addQuestionBtn').onclick = () => window.addQuestion();  
 
-document.getElementById('saveQuizBtn').onclick = async () => {
-    const name = document.getElementById('quizName').value;
-    const qs = Array.from(document.querySelectorAll('.q-val')).map(i => i.value);
-    const as = Array.from(document.querySelectorAll('.a-val')).map(i => i.value);
-    if(name && qs.length > 0) await addDoc(collection(db, "quizzes"), { name, q: qs, a: as, locked: false });
-    document.getElementById('quizName').value = ""; document.getElementById('questions-container').innerHTML = "";
-};
+document.getElementById('saveQuizBtn').onclick = async () => {  
+    const name = document.getElementById('quizName').value;  
+    const qs = Array.from(document.querySelectorAll('.q-val')).map(i => i.value);  
+    const as = Array.from(document.querySelectorAll('.a-val')).map(i => i.value);  
+    const editId = document.getElementById('saveQuizBtn').getAttribute('data-edit-id');  
+    if (name && qs.length > 0) {  
+        const data = { name, q: qs, a: as, locked: false };  
+        if (editId) { await updateDoc(doc(db, "quizzes", editId), data); document.getElementById('saveQuizBtn').removeAttribute('data-edit-id'); document.getElementById('saveQuizBtn').innerText = "Save Quiz";  
+        } else { await addDoc(collection(db, "quizzes"), data); }  
+        document.getElementById('quizName').value = ""; document.getElementById('questions-container').innerHTML = "";  
+    }  
+};  
 
-onSnapshot(collection(db, "quizzes"), (snap) => {
-    const list = document.getElementById('quizzes-list');
-    list.innerHTML = snap.docs.map(d => `<tr><td>${d.data().name}</td><td>${d.data().q.length} Qs</td>
-    <td>${d.data().locked ? 'Locked' : 'Active'}</td>
-    <td><button class="delete-btn" onclick="deleteQuiz('${d.id}')">Delete</button>
-    <button class="edit-btn" onclick="toggleQuiz('${d.id}', ${d.data().locked})">${d.data().locked?'Unlock':'Lock'}</button></td></tr>`).join('');
-});
+onSnapshot(collection(db, "quizzes"), (snap) => {  
+    document.getElementById('quizzes-list').innerHTML = snap.docs.map(d => `  
+        <tr><td><strong>${d.data().name}</strong></td><td>${d.data().q.join('<br>')}</td><td style="color:#059669">${d.data().a.join('<br>')}</td><td>${d.data().locked ? '🔒' : '✅'}</td>  
+        <td><button class="edit-btn" onclick="prepareEditQuiz('${d.id}', '${d.data().name}', ${JSON.stringify(d.data().q).replace(/"/g, '&quot;')}, ${JSON.stringify(d.data().a).replace(/"/g, '&quot;')})">Edit</button><button class="delete-btn" onclick="deleteQuiz('${d.id}')">Delete</button>  
+        <button class="btn" style="background:#64748b; color:white; padding:6px 12px; font-size:12px;" onclick="toggleQuiz('${d.id}', ${d.data().locked})">${d.data().locked ? 'Unlock' : 'Lock'}</button></td></tr>`).join('');  
+});  
 
-// --- 4. LIVE SCOREBOARD ---
-onSnapshot(collection(db, "results"), (snap) => {
-    const list = document.getElementById('scoreboard-list');
-    list.innerHTML = snap.docs.map(d => {
-        const r = d.data();
-        return `<tr><td>${r.studentId}</td><td>${r.gradeSection}</td><td>${r.quizName}</td><td>${r.score}</td>
-        <td><button class="delete-btn" onclick="deleteResult('${d.id}')">Clear</button></td></tr>`;
-    }).join('');
-});
+window.prepareEditQuiz = (id, n, qs, as) => {  
+    document.getElementById('quizName').value = n; document.getElementById('questions-container').innerHTML = "";  
+    qs.forEach((q, i) => window.addQuestion(q, as[i]));  
+    document.getElementById('saveQuizBtn').setAttribute('data-edit-id', id);  
+    document.getElementById('saveQuizBtn').innerText = "Update Quiz";  
+};  
 
-// GLOBAL ACTIONS
-window.deleteEnroll = async (id) => { if(confirm("Remove student?")) await deleteDoc(doc(db, "enrolled", id)); };
-window.deleteBook = async (id) => { if(confirm("Delete book?")) await deleteDoc(doc(db, "books", id)); };
-window.deleteQuiz = async (id) => { if(confirm("Delete quiz?")) await deleteDoc(doc(db, "quizzes", id)); };
-window.deleteResult = async (id) => { if(confirm("Delete result?")) await deleteDoc(doc(db, "results", id)); };
-window.toggleQuiz = async (id, status) => { await updateDoc(doc(db, "quizzes", id), { locked: !status }); };
-document.getElementById('refreshDataBtn').onclick = () => location.reload();
+// RESULTS LOGIC
+onSnapshot(collection(db, "results"), (snap) => {  
+    document.getElementById('scoreboard-list').innerHTML = snap.docs.map(d => `  
+        <tr><td>${d.data().studentId}</td><td>${d.data().gradeSection}</td><td>${d.data().quizName}</td><td>${d.data().score}</td>  
+        <td class="no-print"><button class="delete-btn" onclick="deleteResult('${d.id}')">Clear</button></td></tr>`).join('');  
+});  
+
+// GLOBAL ACTIONS  
+window.deleteEnroll = async (id) => { if(confirm("Delete student?")) await deleteDoc(doc(db, "enrolled", id)); };  
+window.deleteBook = async (id) => { if(confirm("Delete book?")) await deleteDoc(doc(db, "books", id)); };  
+window.deleteQuiz = async (id) => { if(confirm("Delete quiz?")) await deleteDoc(doc(db, "quizzes", id)); };  
+window.deleteResult = async (id) => { if(confirm("Delete result?")) await deleteDoc(doc(db, "results", id)); };  
+window.toggleQuiz = async (id, s) => { await updateDoc(doc(db, "quizzes", id), { locked: !s }); };  
 
 </script>  
 </body>  

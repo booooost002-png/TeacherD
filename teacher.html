@@ -41,9 +41,21 @@ table { width:100%; border-collapse: collapse; margin-top:20px; table-layout: au
 th, td { border:1px solid #e2e8f0; padding:12px; text-align:left; vertical-align:middle; }  
 th { background: #f1f5f9; }  
 
+/* Book Link Styling: Blue, Clickable, No Underline */
+#books-list-body a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+#books-list-body a:hover {
+  color: #1d4ed8;
+}
+
 .action-cell { display: flex; gap: 8px; align-items: center; justify-content: flex-start; }
 .edit-btn { background:#3b82f6;color:white;padding:8px 12px;font-size:12px;border-radius:6px;cursor:pointer; border:none; }  
-.lock-btn { background:#64748b; color:white; padding:8px 12px; font-size:12px; border-radius:6px; cursor:pointer; border:none; }
+.lock-btn { background:#64748b; color:white; padding:8px 128px; font-size:12px; border-radius:6px; cursor:pointer; border:none; }
+/* Fixed width for lock button in table to prevent jumping */
+.lock-btn { width: 70px; }
 
 .question-block { margin-bottom:10px; display:flex; gap:10px; align-items:center; }  
 .question-block input { flex:1; }  

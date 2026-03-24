@@ -37,20 +37,9 @@ textarea { resize: vertical; }
 .btn-primary:hover { background: #1d4ed8; }  
 .hidden { display: none; }  
 
-/* Table Styles */
 table { width:100%; border-collapse: collapse; margin-top:20px; table-layout: auto; }  
 th, td { border:1px solid #e2e8f0; padding:12px; text-align:left; vertical-align:middle; }  
 th { background: #f1f5f9; }  
-
-/* Books Style Customization */
-#books-list-body a {
-    color: #2563eb;
-    text-decoration: none;
-    font-weight: 500;
-}
-#books-list-body a:hover {
-    text-decoration: underline;
-}
 
 .action-cell { display: flex; gap: 8px; align-items: center; justify-content: flex-start; }
 .edit-btn { background:#3b82f6;color:white;padding:8px 12px;font-size:12px;border-radius:6px;cursor:pointer; border:none; }  
@@ -60,7 +49,7 @@ th { background: #f1f5f9; }
 .question-block input { flex:1; }  
 
 .bulk-controls { margin-top:15px; text-align: left; display: flex; gap: 10px; align-items: center; margin-bottom: 10px;}  
-.bulk-controls button { padding: 8px 16px; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;}  
+.bulk-controls button { padding: 8px 16px; font-size: 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;} 
 .btn-success-small { background: var(--success); color: white; }  
 .btn-danger-small { background: var(--danger); color: white; }
 
@@ -102,7 +91,7 @@ input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
     </div>  
 
     <div id="scoreboard-controls" class="hidden">  
-      <h3>STUDENT RESULT</h3>  
+      <h3>STUDENT RESULTS</h3>  
       <div class="bulk-controls no-print">  
           <button class="btn-success-small" onclick="window.print()">Print Report</button>  
           <button class="btn-danger-small" id="clearSelectedResultsBtn">Clear Selected Results</button>
@@ -152,7 +141,11 @@ input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
           
           <label>Time Limit per Question (Seconds)</label>
           <input type="number" id="quizTimeLimit" placeholder="0 = Manual" style="margin-bottom:2px;">
-          <span class="helper-text">Enter 0 for Manual.</span><br>
+          <span class="helper-text">Enter 0 for Manual mode.</span><br>
+
+          <label style="margin-top:10px;">Max Retries per Question</label>
+          <input type="number" id="quizRetries" placeholder="0" value="0" min="0" style="margin-bottom:2px;">
+          <span class="helper-text">0 = Only 1 try. 1 = Initial + 1 Retry.</span><br>
 
           <div id="questions-container" style="margin-top:15px;"></div>  
           
@@ -169,8 +162,8 @@ input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
             <tr>
                 <th style="width: 40px;"><input type="checkbox" id="selectAllQuizzes"></th>
                 <th style="width: 150px;">Title</th>
-                <th style="width: 80px;">Timer</th>
-                <th>Content (Questions & Answers)</th>
+                <th style="width: 120px;">Settings</th>
+                <th>Content (Q & A)</th>
                 <th style="width: 60px;">Status</th>
                 <th style="width: 150px;">Actions</th>
             </tr>
@@ -233,7 +226,7 @@ document.getElementById('loginBtn').onclick = () => {
 };  
 document.getElementById('logoutBtn').onclick = () => location.reload();  
 
-// NAV 
+// NAVIGATION
 function show(id){  
   ['books-section', 'quizzes-section', 'scoreboard-controls', 'enroll-section'].forEach(s => document.getElementById(s).classList.add('hidden'));  
   document.getElementById(id).classList.remove('hidden');  
@@ -331,41 +324,53 @@ document.getElementById('addQuestionBtn').onclick = () => window.addQuestion();
 document.getElementById('saveQuizBtn').onclick = async () => {  
     const name = document.getElementById('quizName').value;  
     const timeLimit = document.getElementById('quizTimeLimit').value || "0";
+    const retries = document.getElementById('quizRetries').value || "0";
     const qs = Array.from(document.querySelectorAll('.q-val')).map(i => i.value);  
     const as = Array.from(document.querySelectorAll('.a-val')).map(i => i.value);  
     const editId = document.getElementById('saveQuizBtn').getAttribute('data-edit-id');  
     
     if (name && qs.length > 0) {  
-        const data = { name, timeLimit: parseInt(timeLimit), q: qs, a: as, locked: false };  
+        const data = { 
+            name, 
+            timeLimit: parseInt(timeLimit), 
+            retries: parseInt(retries), 
+            q: qs, 
+            a: as, 
+            locked: false 
+        };  
         if (editId) { 
             await updateDoc(doc(db, "quizzes", editId), data); 
             document.getElementById('saveQuizBtn').removeAttribute('data-edit-id'); 
             document.getElementById('saveQuizBtn').innerText = "Save Quiz";  
         } else { await addDoc(collection(db, "quizzes"), data); }  
-        document.getElementById('quizName').value = ""; document.getElementById('quizTimeLimit').value = ""; document.getElementById('questions-container').innerHTML = "";  
+        document.getElementById('quizName').value = ""; 
+        document.getElementById('quizTimeLimit').value = ""; 
+        document.getElementById('quizRetries').value = "0";
+        document.getElementById('questions-container').innerHTML = "";  
     }  
 };  
 
 onSnapshot(collection(db, "quizzes"), (snap) => {  
     document.getElementById('quizzes-list').innerHTML = snap.docs.map(d => {
         const qData = d.data();
-        // Updated Content view for teacher reference
         const contentPreview = qData.q.map((question, i) => `
             <div style="margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dotted #ccc;">
                 <strong>Q:</strong> ${question} <br>
                 <span style="color: #059669;"><strong>A:</strong> ${qData.a[i]}</span>
-            </div>
-        `).join('');
+            </div>`).join('');
 
         return `<tr>
             <td><input type="checkbox" class="quiz-cb" value="${d.id}"></td>
             <td><strong>${qData.name}</strong></td>
-            <td>${qData.timeLimit > 0 ? qData.timeLimit+'s' : 'Manual'}</td>
+            <td style="font-size:12px;">
+                Timer: <b>${qData.timeLimit > 0 ? qData.timeLimit+'s' : 'Manual'}</b><br>
+                Retries: <b>${qData.retries || 0}</b>
+            </td>
             <td style="font-size:12px; color:#334155; line-height: 1.4;">${contentPreview}</td>
             <td>${qData.locked ? '🔒' : '✅'}</td>  
             <td>
                 <div class="action-cell">
-                    <button class="edit-btn" onclick="prepareEditQuiz('${d.id}', '${qData.name}', ${qData.timeLimit || 0}, ${JSON.stringify(qData.q).replace(/"/g, '&quot;')}, ${JSON.stringify(qData.a).replace(/"/g, '&quot;')})">Edit</button>
+                    <button class="edit-btn" onclick="prepareEditQuiz('${d.id}', '${qData.name}', ${qData.timeLimit || 0}, ${JSON.stringify(qData.q).replace(/"/g, '&quot;')}, ${JSON.stringify(qData.a).replace(/"/g, '&quot;')}, ${qData.retries || 0})">Edit</button>
                     <button class="lock-btn" onclick="toggleQuiz('${d.id}', ${qData.locked})">${qData.locked ? 'Unlock' : 'Lock'}</button>
                 </div>
             </td>
@@ -430,9 +435,10 @@ window.prepareEditBook = (id, t, l) => {
     document.getElementById('saveBookBtn').setAttribute('data-edit-id', id); 
     document.getElementById('saveBookBtn').innerText = "Update Book"; 
 };
-window.prepareEditQuiz = (id, n, t, qs, as) => { 
+window.prepareEditQuiz = (id, n, t, qs, as, r) => { 
     document.getElementById('quizName').value = n; 
     document.getElementById('quizTimeLimit').value = t; 
+    document.getElementById('quizRetries').value = r;
     document.getElementById('questions-container').innerHTML = ""; 
     qs.forEach((q, i) => window.addQuestion(q, as[i])); 
     document.getElementById('saveQuizBtn').setAttribute('data-edit-id', id); 

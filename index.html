@@ -11,19 +11,22 @@ body { font-family: 'Segoe UI', Roboto, Helvetica, Arial; text-align: center; pa
 .input-group { margin-bottom: 20px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto; }
 label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
 input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; outline: none; }
-.btn { padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; border: none; transition: all 0.2s; }
+.btn { padding: 12px 24px; font-size: 16px; font-weight: 600; border-radius: 8px; cursor: pointer; border: none; transition: all 0.2s; margin: 5px; }
 .btn-primary { background-color: var(--primary); color: white; width: 100%; max-width: 400px; }
 #btnSpeak { background-color: var(--success); color: white; font-size: 20px; padding: 20px 40px; border-radius: 50px; margin: 20px 0; }
 #btnSpeak:disabled { background-color: #cbd5e1; cursor: not-allowed; }
-#question { font-size: 26px; font-weight: 700; margin: 30px 0; color: #0f172a; }
+#question { font-size: 26px; font-weight: 700; margin: 10px 0; color: #0f172a; }
+#timer-display { font-size: 20px; font-weight: bold; color: var(--danger); margin-bottom: 15px; }
 #transcript { min-height: 24px; color: #64748b; font-style: italic; margin-bottom: 10px; }
-#result-feedback { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
-.hidden { display: none; }
+#result-feedback { font-size: 28px; font-weight: 800; margin-bottom: 10px; min-height: 40px; }
+.hidden { display: none !important; }
+.nav-controls { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+.btn-nav { background: #64748b; color: white; padding: 12px 24px; font-size: 16px; }
+#score-display { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 10px; }
 .book-item { display: flex; align-items: center; padding: 12px; border: 1px solid #e2e8f0; margin-bottom: 10px; border-radius: 8px; background: white; }
 .book-info { flex: 1; text-align: left; }
 .book-title { color: var(--primary); font-weight: 600; font-size: 16px; }
-.book-link { font-size: 12px; color: #64748b; text-decoration: none; }
-#score-display { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 10px; }
+.completion-controls { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 </style>
 </head>
 <body>
@@ -31,11 +34,11 @@ input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border:
 <div id="quiz-card">
   <div id="setup-section">
     <h1>Student Portal</h1>
-    <p>Sign in to access your materials.</p>
+    <p>Sign in to start your assessment.</p>
     <div class="input-group">
       <label>Student ID</label>
-      <input type="text" id="studentID" placeholder="Enter Student ID (e.g., 001)">
-      <div id="studentIdError" class="hidden" style="color: var(--danger); font-weight: 600; margin-top: 6px;">ID not enrolled. Ask your teacher.</div>
+      <input type="text" id="studentID" placeholder="Enter Student ID">
+      <div id="studentIdError" class="hidden" style="color: var(--danger); font-weight: 600; margin-top: 6px;">ID not enrolled.</div>
     </div>
     <div class="input-group">
       <label>Grade & Section</label>
@@ -47,11 +50,10 @@ input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border:
   <div id="dashboard-section" class="hidden">
     <h1>Welcome!</h1>
     <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-      <button class="btn" id="navBooks" style="background-color: #8b5cf6; color: white; padding: 20px 40px;">📚 Read Books</button>
-      <button class="btn" id="navQuiz" style="background-color: var(--success); color: white; padding: 20px 40px;">🎤 Take Quiz</button>
+      <button class="btn" id="navBooks" style="background-color: #8b5cf6; color: white; padding: 20px 40px;">📚 Books</button>
+      <button class="btn" id="navQuiz" style="background-color: var(--success); color: white; padding: 20px 40px;">🎤 Quizzes</button>
     </div>
-    <br>
-    <button class="btn" onclick="location.reload()" style="background:#64748b; color:white;">Logout</button>
+    <br><button class="btn" onclick="location.reload()" style="background:#64748b; color:white;">Logout</button>
   </div>
 
   <div id="quiz-menu-section" class="hidden">
@@ -61,11 +63,20 @@ input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border:
   </div>
 
   <div id="quiz-section" class="hidden">
+    <div id="timer-display">Time Left: --s</div>
     <div id="question"></div>
     <button id="btnSpeak" class="btn">🎤 Tap to Answer</button>
-    <div id="transcript">Waiting for your voice...</div>
+    <div id="transcript" class="hidden">Waiting...</div>
     <div id="result-feedback"></div>
     <div id="score-display">Score: 0</div>
+
+    <div id="manual-nav" class="nav-controls hidden">
+      <button id="nextBtn" class="btn btn-nav">Next Question →</button>
+    </div>
+
+    <div id="completion-section" class="hidden completion-controls">
+        <button id="finishBtn" class="btn btn-primary" style="background:var(--success); max-width: 300px;">SUBMIT QUIZ</button>
+    </div>
   </div>
 
   <div id="books-section" class="hidden">
@@ -79,13 +90,12 @@ input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border:
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// FIREBASE CONFIG - PASTE YOUR KEYS HERE
 const firebaseConfig = {
-  apiKey: "YOUR_ACTUAL_API_KEY",
+  apiKey: "YOUR_API_KEY",
   authDomain: "teacherd-c39ea.firebaseapp.com",
   projectId: "teacherd-c39ea",
   storageBucket: "teacherd-c39ea.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
   appId: "YOUR_APP_ID"
 };
 
@@ -96,9 +106,9 @@ let currentBooks = [];
 let currentQuizzes = [];
 let activeQuiz = null;
 let currentIndex = 0;
-let score = 0;
+let timerInterval = null;
+let answersAttempted = {}; 
 
-// --- NAVIGATION LOGIC ---
 function showSection(id) {
     ['setup-section', 'dashboard-section', 'quiz-menu-section', 'quiz-section', 'books-section'].forEach(s => {
         document.getElementById(s).classList.add('hidden');
@@ -111,41 +121,22 @@ document.getElementById('navQuiz').onclick = () => { renderQuizMenu(); showSecti
 document.getElementById('backFromBooks').onclick = () => showSection('dashboard-section');
 document.getElementById('backFromQuizMenu').onclick = () => showSection('dashboard-section');
 
-// --- LOGIN ---
 document.getElementById('loginBtn').onclick = async () => {
     const id = document.getElementById('studentID').value.trim();
-    const gs = document.getElementById('gradeSection').value.trim();
-
-    if(!id || !gs) return alert("Please fill in your ID and Grade/Section");
-
+    if(!id) return alert("Enter ID");
     const q = query(collection(db, "enrolled"), where("studentId", "==", id));
     const snap = await getDocs(q);
-
-    if (snap.empty) {
-        document.getElementById('studentIdError').classList.remove('hidden');
-    } else {
-        showSection('dashboard-section');
-    }
+    if (snap.empty) document.getElementById('studentIdError').classList.remove('hidden');
+    else showSection('dashboard-section');
 };
 
-// --- REAL-TIME DATA ---
-onSnapshot(collection(db, "books"), (snap) => {
-    currentBooks = snap.docs.map(doc => doc.data());
-});
-
-onSnapshot(collection(db, "quizzes"), (snap) => {
-    currentQuizzes = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-});
+onSnapshot(collection(db, "books"), (snap) => { currentBooks = snap.docs.map(doc => doc.data()); });
+onSnapshot(collection(db, "quizzes"), (snap) => { currentQuizzes = snap.docs.map(doc => ({id: doc.id, ...doc.data()})); });
 
 function renderBooks() {
-    const container = document.getElementById('booksList');
-    container.innerHTML = currentBooks.map(b => `
-        <div class="book-item">
-            <div class="book-info">
-                <div class="book-title">${b.title}</div>
-                <a href="${b.link}" target="_blank" class="book-link">Open PDF Document →</a>
-            </div>
-        </div>`).join('');
+    document.getElementById('booksList').innerHTML = currentBooks.map(b => `
+        <div class="book-item"><div class="book-info"><div class="book-title">${b.title}</div>
+        <a href="${b.link}" target="_blank" style="color:#2563eb; text-decoration:none;">Open PDF →</a></div></div>`).join('');
 }
 
 function renderQuizMenu() {
@@ -156,78 +147,168 @@ function renderQuizMenu() {
         btn.className = "btn btn-primary";
         btn.style.backgroundColor = q.locked ? "#cbd5e1" : "#2563eb";
         btn.innerHTML = q.name + (q.locked ? " 🔒" : "");
-        btn.onclick = () => {
-            if(q.locked) return alert("Teacher has locked this quiz.");
-            startActualQuiz(q);
+        
+        // Updated onClick handler to limit attempts
+        btn.onclick = async () => { 
+            if(q.locked) {
+                alert("Locked!");
+                return;
+            }
+
+            const studentId = document.getElementById('studentID').value.trim();
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "Checking records..."; // Give the user feedback while fetching data
+            
+            try {
+                // Fetch previous results for this student
+                const resultsQuery = query(collection(db, "results"), where("studentId", "==", studentId));
+                const snap = await getDocs(resultsQuery);
+                
+                let attempts = 0;
+                snap.forEach(doc => {
+                    // Filter in Javascript to avoid needing a Firebase composite index
+                    if (doc.data().quizName === q.name) {
+                        attempts++;
+                    }
+                });
+
+                btn.innerHTML = originalText; // Restore button text
+
+                if (attempts >= 3) {
+                    alert("You have reached the maximum of 3 attempts for this quiz. Please ask your teacher for consideration to clear your record on the teacher dashboard.");
+                } else {
+                    startActualQuiz(q); 
+                }
+            } catch (error) {
+                console.error("Error checking attempts:", error);
+                btn.innerHTML = originalText;
+                alert("Failed to check attempt limits. Please check your connection.");
+            }
         };
         container.appendChild(btn);
     });
 }
 
-// --- SPEECH & QUIZ ENGINE ---
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
 recognition.lang = 'en-US';
-recognition.interimResults = false;
 
 function startActualQuiz(quiz) {
     activeQuiz = quiz;
+    activeQuiz.timeLimit = Number(activeQuiz.timeLimit) || 0;
     currentIndex = 0;
-    score = 0;
+    answersAttempted = {}; 
     showSection('quiz-section');
     nextQuestion();
 }
 
 function nextQuestion() {
+    clearInterval(timerInterval);
+    
     if(currentIndex >= activeQuiz.q.length) {
-        saveResults();
+        if (activeQuiz.timeLimit > 0) {
+            saveResults();
+        } else {
+            document.getElementById('question').textContent = "Assessment Complete";
+            document.getElementById('completion-section').classList.remove('hidden');
+            document.getElementById('btnSpeak').classList.add('hidden');
+            document.getElementById('transcript').classList.add('hidden');
+            document.getElementById('result-feedback').classList.add('hidden');
+            document.getElementById('timer-display').classList.add('hidden');
+            document.getElementById('manual-nav').classList.add('hidden');
+        }
         return;
     }
+
+    // Reset UI for the new question
+    document.getElementById('completion-section').classList.add('hidden');
+    document.getElementById('manual-nav').classList.add('hidden'); // Hide Next btn by default
     document.getElementById('question').textContent = activeQuiz.q[currentIndex];
-    document.getElementById('score-display').textContent = `Score: ${score} / ${activeQuiz.q.length}`;
-    document.getElementById('result-feedback').textContent = "";
-    document.getElementById('transcript').textContent = "Ready for answer...";
+    document.getElementById('score-display').textContent = `Score: ${calculateScore()} / ${activeQuiz.q.length}`;
     document.getElementById('btnSpeak').disabled = false;
-    document.getElementById('btnSpeak').textContent = "🎤 Tap to Answer";
+    document.getElementById('result-feedback').innerHTML = "";
+
+    const previousResult = answersAttempted[currentIndex];
+    if (previousResult && previousResult.correct) {
+        document.getElementById('btnSpeak').classList.add('hidden');
+        document.getElementById('result-feedback').innerHTML = "<span style='color:green'>Correct ✅</span>";
+        document.getElementById('manual-nav').classList.remove('hidden'); // Show Next if already correct
+    } else {
+        document.getElementById('btnSpeak').classList.remove('hidden');
+    }
+
+    if (activeQuiz.timeLimit > 0) {
+        document.getElementById('manual-nav').classList.add('hidden'); // Keep hidden in timed mode
+        document.getElementById('timer-display').classList.remove('hidden');
+        startTimer(activeQuiz.timeLimit);
+    } else {
+        document.getElementById('timer-display').classList.add('hidden');
+    }
+}
+
+function startTimer(seconds) {
+    let timeLeft = seconds;
+    document.getElementById('timer-display').textContent = `Time Left: ${timeLeft}s`;
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer-display').textContent = `Time Left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('result-feedback').innerHTML = "<span style='color:red'>Time Up! ⏰</span>";
+            setTimeout(() => { currentIndex++; nextQuestion(); }, 1500);
+        }
+    }, 1000);
 }
 
 document.getElementById('btnSpeak').onclick = () => {
     recognition.start();
     document.getElementById('btnSpeak').textContent = "Listening...";
-    document.getElementById('btnSpeak').disabled = true;
 };
 
 recognition.onresult = (event) => {
     const speech = event.results[0][0].transcript.toLowerCase();
-    const keyword = activeQuiz.a[currentIndex].toLowerCase();
-    document.getElementById('transcript').textContent = `AI Heard: "${speech}"`;
+    const keywords = activeQuiz.a[currentIndex].toLowerCase().split('|');
+    const isCorrect = keywords.some(k => speech.includes(k.trim()));
 
-    if(speech.includes(keyword)) {
-        document.getElementById('result-feedback').innerHTML = "<span style='color:green'>Correct! ✅</span>";
-        score++;
-    } else {
-        document.getElementById('result-feedback').innerHTML = `<span style='color:red'>Incorrect ❌ (Keyword: ${keyword})</span>`;
+    answersAttempted[currentIndex] = { correct: isCorrect, speech: speech };
+    document.getElementById('result-feedback').innerHTML = isCorrect ? "<span style='color:green'>Correct! ✅</span>" : "<span style='color:red'>Incorrect ❌</span>";
+
+    if (activeQuiz.timeLimit > 0) {
+        clearInterval(timerInterval);
+        setTimeout(() => { currentIndex++; nextQuestion(); }, 2000);
+    } else if (isCorrect) {
+        setTimeout(() => {
+            document.getElementById('btnSpeak').classList.add('hidden');
+            document.getElementById('manual-nav').classList.remove('hidden'); // Show Next button only on correct
+            document.getElementById('score-display').textContent = `Score: ${calculateScore()} / ${activeQuiz.q.length}`;
+        }, 800);
     }
-
-    setTimeout(() => {
-        currentIndex++;
-        nextQuestion();
-    }, 2500);
+    document.getElementById('btnSpeak').textContent = "🎤 Tap to Answer";
 };
 
-async function saveResults() {
-    const id = document.getElementById('studentID').value;
-    const gs = document.getElementById('gradeSection').value;
-    
-    await addDoc(collection(db, "results"), {
-        studentId: id,
-        gradeSection: gs,
-        quizName: activeQuiz.name,
-        score: `${score} / ${activeQuiz.q.length}`,
-        timestamp: new Date()
-    });
+document.getElementById('nextBtn').onclick = () => { currentIndex++; nextQuestion(); };
 
-    alert("Well done! Your results were sent to the Teacher.");
-    location.reload();
+document.getElementById('finishBtn').onclick = () => saveResults();
+
+function calculateScore() {
+    return Object.values(answersAttempted).filter(a => a.correct).length;
+}
+
+async function saveResults() {
+    const finalScore = calculateScore();
+    try {
+        await addDoc(collection(db, "results"), {
+            studentId: document.getElementById('studentID').value,
+            gradeSection: document.getElementById('gradeSection').value,
+            quizName: activeQuiz.name,
+            score: `${finalScore} / ${activeQuiz.q.length}`,
+            timestamp: new Date()
+        });
+        alert("Results successfully submitted!");
+    } catch (e) {
+        console.error("Error saving:", e);
+        alert("Failed to save. Check your connection.");
+    }
+    showSection('dashboard-section');
 }
 </script>
 </body>

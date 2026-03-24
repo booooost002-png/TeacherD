@@ -141,11 +141,11 @@ input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
           
           <label>Time Limit per Question (Seconds)</label>
           <input type="number" id="quizTimeLimit" placeholder="0 = Manual" style="margin-bottom:2px;">
-          <span class="helper-text">Enter 0 for Manual mode.</span><br>
+          <span class="helper-text">Enter 0 for Manual mode (no countdown).</span><br>
 
           <label style="margin-top:10px;">Max Retries per Question</label>
           <input type="number" id="quizRetries" placeholder="0" value="0" min="0" style="margin-bottom:2px;">
-          <span class="helper-text">0 = Only 1 try. 1 = Initial + 1 Retry.</span><br>
+          <span class="helper-text">0 = Only 1 try. 1 = One additional retry after mistake.</span><br>
 
           <div id="questions-container" style="margin-top:15px;"></div>  
           
@@ -176,7 +176,7 @@ input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
       <h3>Enroll Students</h3>  
       <div style="text-align: left; margin-bottom: 20px; max-width: 600px; margin: 0 auto;">  
         <label>Input Students (Format: Name|ID)</label>  
-        <textarea id="enrollInput" rows="4" placeholder="Juan Dela Cruz|001"></textarea>  
+        <textarea id="enrollInput" rows="4" placeholder="Juan Dela Cruz|001&#10;Maria Santos|002"></textarea>  
         <br><br>  
         <button id="saveEnrollBtn" class="btn btn-primary" style="width:100%">Save Students</button>  
       </div>  
@@ -222,7 +222,7 @@ document.getElementById('loginBtn').onclick = () => {
     if (["01","02","03"].includes(id)) {  
         document.getElementById('teacher-login').classList.add('hidden');  
         document.getElementById('teacher-dashboard').classList.remove('hidden');  
-    } else { alert("Invalid ID"); }  
+    } else { alert("Invalid Teacher ID. Use 01, 02, or 03."); }  
 };  
 document.getElementById('logoutBtn').onclick = () => location.reload();  
 
@@ -236,19 +236,19 @@ document.getElementById('addBooksBtn').onclick = () => show('books-section');
 document.getElementById('quizzesBtn').onclick = () => show('quizzes-section');  
 document.getElementById('enrollBtn').onclick = () => show('enroll-section');  
 
-// HELPERS
+// BULK HELPERS
 function setupSelectAll(masterId, childClass) {
     const master = document.getElementById(masterId);
     if(master) {
-        master.addEventListener('change', function() {
+        master.onclick = function() {
             document.querySelectorAll('.' + childClass).forEach(cb => cb.checked = this.checked);
-        });
+        };
     }
 }
 
 async function handleBulkDelete(childClass, collectionName, confirmMsg, isResultArray = false) {
     const selected = document.querySelectorAll(`.${childClass}:checked`);
-    if (selected.length === 0) return alert("Select items first!");
+    if (selected.length === 0) return alert("Please select items first.");
     if (confirm(confirmMsg)) {
         for (let cb of selected) {
             if (isResultArray) {
@@ -256,15 +256,18 @@ async function handleBulkDelete(childClass, collectionName, confirmMsg, isResult
                 for (let id of ids) await deleteDoc(doc(db, collectionName, id));
             } else { await deleteDoc(doc(db, collectionName, cb.value)); }
         }
+        alert("Deletion successful.");
     }
 }
 
-// ENROLL LOGIC 
+// ENROLLMENT
 setupSelectAll('selectAllEnroll', 'enroll-cb');
 document.getElementById('deleteSelectedEnrollBtn').onclick = () => handleBulkDelete('enroll-cb', 'enrolled', "Delete selected students?");
 document.getElementById('saveEnrollBtn').onclick = async () => {  
     const input = document.getElementById('enrollInput').value.trim();  
     const editId = document.getElementById('saveEnrollBtn').getAttribute('data-edit-id');  
+    if (!input) return alert("Please input student data.");
+
     if (editId) {  
         const [name, id] = input.split('|');  
         await updateDoc(doc(db, "enrolled", editId), { name: name.trim(), studentId: id.trim() });  
@@ -292,7 +295,7 @@ onSnapshot(collection(db, "enrolled"), (snap) => {
     renderScoreboard();
 });  
 
-// BOOKS LOGIC
+// BOOKS
 setupSelectAll('selectAllBooks', 'book-cb');
 document.getElementById('deleteSelectedBooksBtn').onclick = () => handleBulkDelete('book-cb', 'books', "Delete selected books?");
 document.getElementById('saveBookBtn').onclick = async () => {  
@@ -300,7 +303,10 @@ document.getElementById('saveBookBtn').onclick = async () => {
     const link = document.getElementById('bookLink').value.trim();  
     const editId = document.getElementById('saveBookBtn').getAttribute('data-edit-id');  
     if (title && link) {  
-        if (editId) { await updateDoc(doc(db, "books", editId), { title, link }); document.getElementById('saveBookBtn').removeAttribute('data-edit-id'); document.getElementById('saveBookBtn').innerText = "Save Book";  
+        if (editId) { 
+            await updateDoc(doc(db, "books", editId), { title, link }); 
+            document.getElementById('saveBookBtn').removeAttribute('data-edit-id'); 
+            document.getElementById('saveBookBtn').innerText = "Save Book";  
         } else { await addDoc(collection(db, "books"), { title, link }); }  
         document.getElementById('bookTitle').value = ""; document.getElementById('bookLink').value = "";  
     }  
@@ -309,7 +315,7 @@ onSnapshot(collection(db, "books"), (snap) => {
     document.getElementById('books-list-body').innerHTML = snap.docs.map(d => `<tr><td><input type="checkbox" class="book-cb" value="${d.id}"></td><td><a href="${d.data().link}" target="_blank">${d.data().title}</a></td><td><button class="edit-btn" onclick="prepareEditBook('${d.id}', '${d.data().title}', '${d.data().link}')">Edit</button></td></tr>`).join('');  
 });  
 
-// QUIZ LOGIC
+// QUIZ
 setupSelectAll('selectAllQuizzes', 'quiz-cb');
 document.getElementById('deleteSelectedQuizzesBtn').onclick = () => handleBulkDelete('quiz-cb', 'quizzes', "Delete selected quizzes?");
 
@@ -347,7 +353,7 @@ document.getElementById('saveQuizBtn').onclick = async () => {
         document.getElementById('quizTimeLimit').value = ""; 
         document.getElementById('quizRetries').value = "0";
         document.getElementById('questions-container').innerHTML = "";  
-    }  
+    } else { alert("Quiz Title and at least one question required."); } 
 };  
 
 onSnapshot(collection(db, "quizzes"), (snap) => {  
@@ -355,18 +361,14 @@ onSnapshot(collection(db, "quizzes"), (snap) => {
         const qData = d.data();
         const contentPreview = qData.q.map((question, i) => `
             <div style="margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px dotted #ccc;">
-                <strong>Q:</strong> ${question} <br>
-                <span style="color: #059669;"><strong>A:</strong> ${qData.a[i]}</span>
+                <strong>Q:</strong> ${question} | <span style="color: #059669;"><strong>A:</strong> ${qData.a[i]}</span>
             </div>`).join('');
 
         return `<tr>
             <td><input type="checkbox" class="quiz-cb" value="${d.id}"></td>
             <td><strong>${qData.name}</strong></td>
-            <td style="font-size:12px;">
-                Timer: <b>${qData.timeLimit > 0 ? qData.timeLimit+'s' : 'Manual'}</b><br>
-                Retries: <b>${qData.retries || 0}</b>
-            </td>
-            <td style="font-size:12px; color:#334155; line-height: 1.4;">${contentPreview}</td>
+            <td style="font-size:12px;">Timer: <b>${qData.timeLimit > 0 ? qData.timeLimit+'s' : 'Manual'}</b><br>Retries: <b>${qData.retries || 0}</b></td>
+            <td style="font-size:12px;">${contentPreview}</td>
             <td>${qData.locked ? '🔒' : '✅'}</td>  
             <td>
                 <div class="action-cell">
@@ -378,9 +380,9 @@ onSnapshot(collection(db, "quizzes"), (snap) => {
     }).join('');  
 });  
 
-// SCOREBOARD LOGIC
+// SCOREBOARD
 setupSelectAll('selectAllResults', 'result-cb');
-document.getElementById('clearSelectedResultsBtn').onclick = () => handleBulkDelete('result-cb', 'results', "Clear selected records?", true);
+document.getElementById('clearSelectedResultsBtn').onclick = () => handleBulkDelete('result-cb', 'results', "Clear selected assessment records?", true);
 
 const resultsQuery = query(collection(db, "results"), orderBy("timestamp", "asc"));
 onSnapshot(resultsQuery, (snap) => {  
@@ -394,18 +396,15 @@ function renderScoreboard() {
         const key = `${data.studentId}_${data.quizName}`;
         if(!groupedResults[key]) {
             const studentMatch = enrolledData.find(e => e.studentId === data.studentId);
-            const displayName = studentMatch ? studentMatch.name : data.studentId;
             groupedResults[key] = { 
-                studentName: displayName, 
+                studentName: studentMatch ? studentMatch.name : `ID: ${data.studentId}`, 
                 grade: data.gradeSection, 
                 quiz: data.quizName, 
                 attempts: [], 
                 docIds: [] 
             };
         }
-        if (groupedResults[key].attempts.length < 3) {
-            groupedResults[key].attempts.push(data.score);
-        }
+        if (groupedResults[key].attempts.length < 3) groupedResults[key].attempts.push(data.score);
         groupedResults[key].docIds.push(data.id);
     });
 
@@ -423,7 +422,7 @@ function renderScoreboard() {
     }).join('');  
 }
 
-// GLOBAL ACTIONS
+// GLOBAL WINDOW ACTIONS
 window.prepareEditEnroll = (id, name, sid) => { 
     document.getElementById('enrollInput').value = `${name}|${sid}`; 
     document.getElementById('saveEnrollBtn').innerText = "Update Student"; 

@@ -221,7 +221,7 @@ recognition.onresult = (event) => {
             document.getElementById('btnSpeak').disabled = false;
             document.getElementById('btnSpeak').innerText = "🎤 Tap to Retry";
         } else {
-            document.getElementById('result-feedback').innerHTML = "<span style='color:var(--danger)'>Next Question... ❌</span>";
+            document.getElementById('result-feedback').innerHTML = "<span style='color:var(--danger)'>Incorrect❌</span>";
             document.getElementById('btnSpeak').classList.add('hidden');
             proceed();
         }

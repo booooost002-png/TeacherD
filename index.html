@@ -8,6 +8,10 @@
         :root { --primary: #2563eb; --success: #22c55e; --danger: #ef4444; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; background-color: var(--bg); color: #1e293b; }
         #quiz-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: inline-block; max-width: 800px; width: 100%; margin-top: 20px; }
+        
+        /* Hides the transcription prompt from the UI entirely */
+        #transcript { display: none; }
+
         .input-group { margin-bottom: 20px; text-align: left; max-width: 400px; margin: 0 auto 20px auto; }
         label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
         input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; outline: none; }
@@ -17,8 +21,7 @@
         #btnSpeak:disabled { background-color: #cbd5e1; cursor: not-allowed; }
         #question { font-size: 32px; font-weight: 700; margin: 20px 0; color: #0f172a; }
         #timer-display { font-size: 20px; font-weight: bold; color: var(--danger); margin-bottom: 15px; }
-        #transcript { min-height: 30px; color: #64748b; font-style: italic; margin-bottom: 15px; background: #f1f5f9; padding: 15px; border-radius: 8px; display: inline-block; width: 90%; }
-        #result-feedback { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
+        #result-feedback { font-size: 28px; font-weight: 800; margin-bottom: 10px; min-height: 40px; }
         .hidden { display: none !important; }
         .nav-controls { margin-top: 20px; }
         .btn-nav { background: #64748b; color: white; padding: 12px 24px; }
@@ -33,7 +36,7 @@
         <h1>Student Portal</h1>
         <div class="input-group">
             <label>Student ID</label>
-            <input type="text" id="studentID" placeholder="Enter ID (e.g., 001)">
+            <input type="text" id="studentID" placeholder="Enter ID">
             <div id="studentIdError" class="hidden" style="color: var(--danger); margin-top: 5px; font-weight: 600;">ID not enrolled.</div>
         </div>
         <div class="input-group">
@@ -65,7 +68,10 @@
         <div id="timer-display" class="hidden">Time Left: --s</div>
         <div id="question"></div>
         <button id="btnSpeak" class="btn">🎤 Tap to Answer</button>
-        <div id="transcript" class="hidden">AI is listening...</div>
+        
+        <!-- This div is still in the code for logic, but hidden by CSS -->
+        <div id="transcript"></div> 
+        
         <div id="result-feedback"></div>
         <div id="score-display">Score: 0 / 0</div>
 
@@ -86,7 +92,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, query, where, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// --- REPLACE WITH YOUR ACTUAL CONFIG FROM TEACHER DASHBOARD ---
+// --- PASTE YOUR FIREBASE CONFIG HERE ---
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "teacherd-c39ea.firebaseapp.com",
@@ -107,11 +113,9 @@ let timerInterval = null;
 let scores = {};
 let retriesUsed = 0;
 
-// SPEECH RECOGNITION SETUP
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognition) alert("Your browser does not support Speech Recognition. Please use Chrome.");
 const recognition = new SpeechRecognition();
-recognition.lang = 'en-US'; // Set to 'fil-PH' for Filipino assessment
+recognition.lang = 'en-US';
 recognition.interimResults = false;
 recognition.continuous = false;
 
@@ -122,14 +126,11 @@ function showSection(id) {
     document.getElementById(id).classList.remove('hidden');
 }
 
-// LOGIN LOGIC
 document.getElementById('loginBtn').onclick = async () => {
     const sId = document.getElementById('studentID').value.trim();
     if(!sId) return alert("Enter Student ID");
-    
     const q = query(collection(db, "enrolled"), where("studentId", "==", sId));
     const snap = await getDocs(q);
-    
     if (snap.empty) {
         document.getElementById('studentIdError').classList.remove('hidden');
     } else {
@@ -139,45 +140,32 @@ document.getElementById('loginBtn').onclick = async () => {
     }
 };
 
-// DATA STREAMS
 onSnapshot(collection(db, "books"), (snap) => { currentBooks = snap.docs.map(d => d.data()); });
 onSnapshot(collection(db, "quizzes"), (snap) => { currentQuizzes = snap.docs.map(d => ({id: d.id, ...d.data()})); });
 
-// NAVIGATION
 document.getElementById('navBooks').onclick = () => {
     document.getElementById('booksList').innerHTML = currentBooks.map(b => `
         <div style="border:1px solid #e2e8f0; padding:15px; margin:10px; border-radius:8px; text-align:left; background:#fff;">
-            <strong style="color:var(--primary)">${b.title}</strong><br>
-            <a href="${b.link}" target="_blank" style="font-size:14px; text-decoration:none; color:#64748b;">Open Document →</a>
+            <strong>${b.title}</strong><br>
+            <a href="${b.link}" target="_blank" style="font-size:14px; text-decoration:none; color:var(--primary);">Open Document →</a>
         </div>`).join('');
     showSection('books-section');
 };
 
 document.getElementById('navQuiz').onclick = () => {
     const container = document.getElementById('quizListContainer');
-    container.innerHTML = currentQuizzes.map(q => `
-        <button class="btn btn-primary" id="btn-q-${q.id}" 
-                style="background:${q.locked ? '#94a3b8' : '#2563eb'}; max-width:400px;">
-            ${q.name} ${q.locked ? '🔒' : ''}
-        </button>`).join('');
-    
+    container.innerHTML = currentQuizzes.map(q => `<button class="btn btn-primary" id="btn-q-${q.id}">${q.name} ${q.locked ? '🔒' : ''}</button>`).join('');
     currentQuizzes.forEach(q => {
         document.getElementById(`btn-q-${q.id}`).onclick = () => {
-            if(q.locked) return alert("This quiz is currently locked.");
+            if(q.locked) return alert("Locked");
             startQuiz(q);
         };
     });
     showSection('quiz-menu-section');
 };
 
-document.getElementById('backFromBooks').onclick = () => showSection('dashboard-section');
-document.getElementById('backFromQuizMenu').onclick = () => showSection('dashboard-section');
-
-// QUIZ LOGIC
 function startQuiz(quiz) {
-    activeQuiz = quiz;
-    currentIndex = 0;
-    scores = {};
+    activeQuiz = quiz; currentIndex = 0; scores = {};
     showSection('quiz-section');
     loadQuestion();
 }
@@ -185,28 +173,17 @@ function startQuiz(quiz) {
 function loadQuestion() {
     clearInterval(timerInterval);
     retriesUsed = 0;
-    
-    if (currentIndex >= activeQuiz.q.length) {
-        saveFinalResults();
-        return;
-    }
-
+    if (currentIndex >= activeQuiz.q.length) { saveFinalResults(); return; }
     document.getElementById('question').innerText = activeQuiz.q[currentIndex];
     document.getElementById('result-feedback').innerText = "";
-    document.getElementById('transcript').classList.add('hidden');
     document.getElementById('btnSpeak').classList.remove('hidden');
     document.getElementById('btnSpeak').disabled = false;
     document.getElementById('btnSpeak').innerText = "🎤 Tap to Answer";
     document.getElementById('manual-nav').classList.add('hidden');
     document.getElementById('score-display').innerText = `Score: ${calculateScore()} / ${activeQuiz.q.length}`;
-
-    // Handle Time Limit (Matches Teacher Dashboard setting)
-    const timeLimit = parseInt(activeQuiz.timeLimit);
-    if (timeLimit > 0) {
+    if (parseInt(activeQuiz.timeLimit) > 0) {
         document.getElementById('timer-display').classList.remove('hidden');
-        startCountdown(timeLimit);
-    } else {
-        document.getElementById('timer-display').classList.add('hidden');
+        startCountdown(parseInt(activeQuiz.timeLimit));
     }
 }
 
@@ -216,32 +193,20 @@ function startCountdown(sec) {
     timerInterval = setInterval(() => {
         timeLeft--;
         document.getElementById('timer-display').innerText = `Time Left: ${timeLeft}s`;
-        if(timeLeft <= 0) {
-            clearInterval(timerInterval);
-            document.getElementById('result-feedback').innerHTML = "<span style='color:var(--danger)'>Time's Up!</span>";
-            setTimeout(() => { currentIndex++; loadQuestion(); }, 2000);
-        }
+        if(timeLeft <= 0) { clearInterval(timerInterval); currentIndex++; loadQuestion(); }
     }, 1000);
 }
 
 document.getElementById('btnSpeak').onclick = () => {
-    try {
-        recognition.start();
-        document.getElementById('btnSpeak').innerText = "Listening...";
-        document.getElementById('btnSpeak').disabled = true;
-    } catch (e) { console.warn("Mic already active"); }
+    recognition.start();
+    document.getElementById('btnSpeak').innerText = "Listening...";
+    document.getElementById('btnSpeak').disabled = true;
 };
 
 recognition.onresult = (event) => {
     const speech = event.results[0][0].transcript.toLowerCase().trim();
     const keywords = (activeQuiz.a[currentIndex] || "").toLowerCase().split('|').map(k => k.trim());
-    
-    // Check if what the student said contains any of the teacher's keywords
     const isCorrect = keywords.some(k => speech.includes(k) && k !== "");
-
-    const transcriptEl = document.getElementById('transcript');
-    transcriptEl.classList.remove('hidden');
-    transcriptEl.innerHTML = `AI heard: "<b>${speech}</b>"`;
 
     if (isCorrect) {
         document.getElementById('result-feedback').innerHTML = "<span style='color:var(--success)'>Correct! ✅</span>";
@@ -251,64 +216,43 @@ recognition.onresult = (event) => {
     } else {
         retriesUsed++;
         const maxRetries = parseInt(activeQuiz.retries) || 0;
-        
         if (retriesUsed <= maxRetries) {
-            document.getElementById('result-feedback').innerHTML = `<span style='color:#f59e0b'>Incorrect. Try again! (${retriesUsed}/${maxRetries})</span>`;
+            document.getElementById('result-feedback').innerHTML = `<span style='color:#f59e0b'>Try again! (${retriesUsed}/${maxRetries})</span>`;
             document.getElementById('btnSpeak').disabled = false;
             document.getElementById('btnSpeak').innerText = "🎤 Tap to Retry";
         } else {
-            document.getElementById('result-feedback').innerHTML = "<span style='color:var(--danger)'>Incorrect. ❌</span>";
+            document.getElementById('result-feedback').innerHTML = "<span style='color:var(--danger)'>Next Question... ❌</span>";
             document.getElementById('btnSpeak').classList.add('hidden');
             proceed();
         }
     }
-    document.getElementById('score-display').innerText = `Score: ${calculateScore()} / ${activeQuiz.q.length}`;
 };
 
 function proceed() {
     clearInterval(timerInterval);
-    // If timer is active, move automatically. If manual (0), show "Next" button.
     if (parseInt(activeQuiz.timeLimit) > 0) {
-        setTimeout(() => { currentIndex++; loadQuestion(); }, 2500);
+        setTimeout(() => { currentIndex++; loadQuestion(); }, 2000);
     } else {
         document.getElementById('manual-nav').classList.remove('hidden');
-        document.getElementById('nextBtn').innerText = (currentIndex === activeQuiz.q.length - 1) ? "Submit Results ✅" : "Next Question →";
+        document.getElementById('nextBtn').innerText = (currentIndex === activeQuiz.q.length - 1) ? "Finish" : "Next →";
     }
 }
 
-document.getElementById('nextBtn').onclick = () => {
-    currentIndex++;
-    loadQuestion();
-};
-
-function calculateScore() {
-    return Object.keys(scores).length;
-}
+document.getElementById('nextBtn').onclick = () => { currentIndex++; loadQuestion(); };
+function calculateScore() { return Object.keys(scores).length; }
 
 async function saveFinalResults() {
     const finalScoreStr = `${calculateScore()} / ${activeQuiz.q.length}`;
-    try {
-        await addDoc(collection(db, "results"), {
-            studentId: document.getElementById('studentID').value.trim(),
-            gradeSection: document.getElementById('gradeSection').value.trim() || "N/A",
-            quizName: activeQuiz.name,
-            score: finalScoreStr,
-            timestamp: serverTimestamp()
-        });
-        alert("Assessment Complete! Your score has been sent to the teacher.");
-    } catch (e) {
-        console.error(e);
-        alert("Failed to save results. Please check your internet.");
-    }
+    await addDoc(collection(db, "results"), {
+        studentId: document.getElementById('studentID').value.trim(),
+        gradeSection: document.getElementById('gradeSection').value.trim(),
+        quizName: activeQuiz.name,
+        score: finalScoreStr,
+        timestamp: serverTimestamp()
+    });
+    alert("Completed!");
     showSection('dashboard-section');
 }
-
-recognition.onerror = (e) => {
-    console.error("Speech Error:", e.error);
-    document.getElementById('btnSpeak').disabled = false;
-    document.getElementById('btnSpeak').innerText = "🎤 Tap to Answer";
-    if(e.error === 'not-allowed') alert("Please allow microphone access in your browser settings.");
-};
 </script>
 </body>
 </html>

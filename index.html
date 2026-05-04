@@ -86,6 +86,7 @@ input { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border:
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, onSnapshot, query, where, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+// --- REPLACE WITH YOUR ACTUAL FIREBASE CONFIG ---
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "teacherd-c39ea.firebaseapp.com",
@@ -107,7 +108,7 @@ let answersAttempted = {};
 let questionAttempts = 0; 
 
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-recognition.lang = 'fil-PH'; 
+recognition.lang = 'en-US'; // Set to fil-PH if you are testing Filipino literacy
 recognition.continuous = false;
 recognition.interimResults = false;
 
@@ -124,8 +125,12 @@ document.getElementById('loginBtn').onclick = async () => {
     if(!id) return alert("Enter ID");
     const q = query(collection(db, "enrolled"), where("studentId", "==", id));
     const snap = await getDocs(q);
-    if (snap.empty) document.getElementById('studentIdError').classList.remove('hidden');
-    else showSection('dashboard-section');
+    if (snap.empty) {
+        document.getElementById('studentIdError').classList.remove('hidden');
+    } else {
+        document.getElementById('studentIdError').classList.add('hidden');
+        showSection('dashboard-section');
+    }
 };
 
 // Data Stream
@@ -146,7 +151,7 @@ function renderQuizMenu() {
         btn.className = "btn btn-primary";
         btn.style.backgroundColor = q.locked ? "#cbd5e1" : "#2563eb";
         btn.innerHTML = q.name + (q.locked ? " 🔒" : "");
-        btn.onclick = async () => { 
+        btn.onclick = () => { 
             if(q.locked) { alert("This quiz is currently locked."); return; }
             startActualQuiz(q); 
         };
@@ -164,7 +169,7 @@ document.getElementById('backFromQuizMenu').onclick = () => showSection('dashboa
 function startActualQuiz(quiz) {
     activeQuiz = quiz;
     activeQuiz.timeLimit = Number(activeQuiz.timeLimit) || 0;
-    activeQuiz.retries = Number(activeQuiz.retries) || 0; // Dynamic from Teacher setting
+    activeQuiz.retries = Number(activeQuiz.retries) || 0; 
     currentIndex = 0;
     answersAttempted = {}; 
     showSection('quiz-section');
@@ -223,7 +228,6 @@ document.getElementById('btnSpeak').onclick = () => {
 };
 
 recognition.onresult = (event) => {
-    questionAttempts++; 
     const speech = event.results[0][0].transcript.toLowerCase();
     const keywords = activeQuiz.a[currentIndex].toLowerCase().split('|');
     const isCorrect = keywords.some(k => speech.includes(k.trim()));
@@ -246,7 +250,7 @@ recognition.onresult = (event) => {
             document.getElementById('manual-nav').classList.remove('hidden');
         }
     } else {
-        // Dynamic retry logic based on Teacher Dashboard
+        questionAttempts++; 
         if (questionAttempts <= activeQuiz.retries) {
             document.getElementById('result-feedback').innerHTML = `<span style='color:red'>Incorrect. Try again!</span>`;
             document.getElementById('btnSpeak').disabled = false;
@@ -289,19 +293,23 @@ function calculateScore() {
 
 async function saveResults() {
     const finalScore = calculateScore();
+    const sId = document.getElementById('studentID').value.trim();
+    const gSec = document.getElementById('gradeSection').value.trim();
+
     try {
         await addDoc(collection(db, "results"), {
-            studentId: document.getElementById('studentID').value,
-            gradeSection: document.getElementById('gradeSection').value,
+            studentId: sId,
+            gradeSection: gSec || "N/A",
             quizName: activeQuiz.name,
             score: `${finalScore} / ${activeQuiz.q.length}`,
             timestamp: serverTimestamp()
         });
-        alert("Results submitted!");
+        alert("Assessment Finished! Results submitted to teacher.");
+        showSection('dashboard-section');
     } catch (e) {
-        alert("Submission failed.");
+        console.error("Error saving results: ", e);
+        alert("Submission failed. Check your internet connection.");
     }
-    showSection('dashboard-section');
 }
 </script>
 </body>
